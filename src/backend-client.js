@@ -77,26 +77,11 @@ class BackendClient {
       logger.info(`Sending barcode: ${barcode}`);
       const api = this.getAxiosInstance();
       
-      // Get API key from environment for barcode endpoint
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-        throw new Error('API_KEY not configured');
-      }
-
-      const response = await axios.post(
-        `${this.baseURL}/api/items/barcode`,
-        {
-          barcode,
-          device_id: this.deviceId,
-        },
-        {
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000,
-        }
-      );
+      // Use device authentication (auth token) instead of API key
+      const response = await api.post('/api/items/barcode', {
+        barcode,
+        device_id: this.deviceId,
+      });
 
       logger.info(`Barcode processed: ${response.data.success ? 'success' : 'not found'}`);
       if (response.data.tts_message) {
