@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  scanner:
+    build: .
+    container_name: barcode-scanner
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0  # Adjust based on your scanner
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    environment:
+      - BACKEND_URL=http://192.168.1.100:3000  # Change to your backend server IP
+      - API_KEY=your-api-key-here  # Get from Settings > API Keys
+      - LOG_LEVEL=info
+      - TEST_MODE=false
+    restart: unless-stopped
+    privileged: true  # Required for USB access
+
+  # For development/testing with hot reload
+  scanner-dev:
+    build: .
+    container_name: barcode-scanner-dev
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./src:/app/src  # Live code updates
+    environment:
+      - BACKEND_URL=http://host.docker.internal:3000
+      - API_KEY=your-api-key-here
+      - LOG_LEVEL=debug
+      - TEST_MODE=stdin  # Options: false, stdin, http
+    stdin_open: true
+    tty: true
+    privileged: true
+    profiles: ["dev"]

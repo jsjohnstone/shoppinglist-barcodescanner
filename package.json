@@ -1,0 +1,23 @@
+{
+  "name": "barcode-scanner",
+  "version": "1.0.0",
+  "description": "Raspberry Pi barcode scanner for shopping list",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": ["barcode", "scanner", "raspberry-pi"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "axios": "^1.6.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

@@ -1,0 +1,124 @@
+# Flatcar Container Linux Butane Configuration for Barcode Scanner
+# This is a Butane config file that needs to be transpiled to Ignition JSON format
+# 
+# To convert this to Ignition format:
+# 1. Download butane: https://github.com/coreos/butane/releases
+# 2. Run: butane --pretty --strict flatcar-config.yaml > ignition.json
+# 3. Use ignition.json to provision your Raspberry Pi
+#
+# IMPORTANT: Replace BACKEND_URL_HERE with your actual backend URL before converting!
+
+variant: flatcar
+version: 1.0.0
+
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - "ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE"
+
+storage:
+  directories:
+    - path: /opt/barcode-scanner
+      mode: 0755
+    - path: /opt/barcode-scanner/config
+      mode: 0755
+    - path: /opt/barcode-scanner/logs
+      mode: 0755
+
+  files:
+    # Docker daemon configuration
+    - path: /etc/docker/daemon.json
+      mode: 0644
+      contents:
+        inline: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            }
+          }
+
+    # Environment file for scanner
+    - path: /opt/barcode-scanner/.env
+      mode: 0644
+      contents:
+        inline: |
+          BACKEND_URL=http://BACKEND_URL_HERE:3000
+          LOG_LEVEL=info
+          TEST_MODE=false
+          NODE_ENV=production
+
+systemd:
+  units:
+    # Enable Docker service
+    - name: docker.service
+      enabled: true
+
+    # Barcode scanner service
+    - name: barcode-scanner.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Shopping List Barcode Scanner
+        After=docker.service
+        Requires=docker.service
+        
+        [Service]
+        Type=simple
+        Restart=always
+        RestartSec=10
+        TimeoutStartSec=300
+        WorkingDirectory=/opt/barcode-scanner
+        
+        # Login to GitHub Container Registry (replace with your PAT)
+        ExecStartPre=/usr/bin/sh -c 'echo "YOUR_GITHUB_PAT_HERE" | /usr/bin/docker login ghcr.io -u jsjohnstone --password-stdin'
+        
+        # Pull latest image
+        ExecStartPre=/usr/bin/docker pull ghcr.io/jsjohnstone/shoppinglist-barcodescanner:latest
+        
+        # Stop and remove old container if exists
+        ExecStartPre=-/usr/bin/docker stop barcode-scanner
+        ExecStartPre=-/usr/bin/docker rm barcode-scanner
+        
+        # Run container
+        ExecStart=/usr/bin/docker run \
+          --name barcode-scanner \
+          --device=/dev/ttyACM0:/dev/ttyACM0 \
+          --env-file=/opt/barcode-scanner/.env \
+          -v /opt/barcode-scanner/config:/app/config:rw \
+          -v /opt/barcode-scanner/logs:/app/logs:rw \
+          --restart=always \
+          ghcr.io/jsjohnstone/shoppinglist-barcodescanner:latest
+        
+        ExecStop=/usr/bin/docker stop barcode-scanner
+        ExecStopPost=/usr/bin/docker rm -f barcode-scanner
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Auto-update service (optional - updates container weekly)
+    - name: scanner-update.service
+      contents: |
+        [Unit]
+        Description=Update Barcode Scanner Container
+        After=docker.service
+        
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/docker pull ghcr.io/jsjohnstone/shoppinglist-barcodescanner:latest
+        ExecStart=/usr/bin/systemctl restart barcode-scanner.service
+
+    - name: scanner-update.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Weekly Barcode Scanner Update
+        
+        [Timer]
+        OnCalendar=weekly
+        Persistent=true
+        
+        [Install]
+        WantedBy=timers.target

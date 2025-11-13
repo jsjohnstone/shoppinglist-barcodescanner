@@ -1,0 +1,31 @@
+# Production docker-compose for barcode scanner
+# This file should be placed in the shoppinglist-barcodescanner repository
+
+version: '3.8'
+
+services:
+  scanner:
+    image: ghcr.io/jsjohnstone/shoppinglist-barcodescanner:latest
+    container_name: barcode-scanner
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://192.168.1.100:3000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TEST_MODE=${TEST_MODE:-false}
+      - NODE_ENV=production
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/config/device.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
