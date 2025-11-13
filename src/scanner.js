@@ -1,5 +1,5 @@
 import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
+import { InterByteTimeoutParser } from '@serialport/parser-inter-byte-timeout';
 import EventEmitter from 'events';
 import logger from './logger.js';
 import { config } from './config.js';
@@ -38,7 +38,9 @@ class Scanner extends EventEmitter {
         stopBits: 1,
       });
 
-      this.parser = this.port.pipe(new ReadlineParser({ delimiter: '\n' }));
+      // Use InterByteTimeoutParser since scanner doesn't send line endings
+      // Emits data after 50ms of silence (no new bytes received)
+      this.parser = this.port.pipe(new InterByteTimeoutParser({ interval: 50 }));
 
       this.port.on('open', () => {
         logger.info('Scanner connected');
@@ -59,7 +61,7 @@ class Scanner extends EventEmitter {
       });
 
       this.parser.on('data', (data) => {
-        const barcode = data.trim();
+        const barcode = data.toString().trim();
         if (barcode) {
           logger.info(`Barcode scanned: ${barcode}`);
           this.emit('barcode', barcode);
