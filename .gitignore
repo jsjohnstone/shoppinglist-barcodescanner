@@ -1,0 +1,11 @@
+node_modules
+.env
+dist
+build
+public
+*.log
+.DS_Store
+frontend/node_modules
+frontend/dist
+data
+barcode-scanner/
