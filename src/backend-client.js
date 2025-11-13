@@ -98,8 +98,40 @@ class BackendClient {
           tts_message: error.response.data.tts_message,
         };
       }
+      
+      // Log API error event when backend is unreachable
       logger.error(`Barcode request failed: ${error.message}`);
+      await this.logEvent('api_error', 'Backend API unreachable', {
+        error: error.message,
+        barcode: barcode,
+      }).catch(() => {}); // Silent fail on event logging
+      
       throw error;
+    }
+  }
+
+  async logEvent(type, message, metadata = null) {
+    try {
+      // We need to get the device database ID first
+      if (!this.deviceConfig) {
+        await this.getConfig();
+      }
+      
+      // Extract device ID from config if available
+      // Note: The backend needs to support logging events by device_id instead of database id
+      // For now, this is a placeholder that will need backend support
+      const api = this.getAxiosInstance();
+      await api.post('/api/devices/events', {
+        type,
+        message,
+        metadata,
+        device_id: this.deviceId,
+      });
+      
+      logger.debug(`Event logged: ${type} - ${message}`);
+    } catch (error) {
+      // Silent fail - event logging should never break the scanner
+      logger.debug(`Failed to log event: ${error.message}`);
     }
   }
 
