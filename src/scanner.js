@@ -62,9 +62,12 @@ class Scanner extends EventEmitter {
 
       this.parser.on('data', (data) => {
         const barcode = data.toString().trim();
-        if (barcode) {
+        // Filter out LED command echoes (AISGDT10. pattern)
+        if (barcode && !barcode.includes('AISGDT10')) {
           logger.info(`Barcode scanned: ${barcode}`);
           this.emit('barcode', barcode);
+        } else if (barcode) {
+          logger.debug(`Ignored LED command echo: ${barcode}`);
         }
       });
     } catch (error) {
